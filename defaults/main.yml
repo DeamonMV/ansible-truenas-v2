@@ -1,0 +1,379 @@
+---
+truenas_web_protocol: http
+truenas_port: 80
+truenas_host: localhost
+truenas_url: "{{ truenas_web_protocol + '://' + truenas_host + ':' + truenas_port|string }}"
+truenas_api_key: "1-API_KEY"
+truenas_main_pool: pool
+
+truenas_groups: []
+#  - name: plex
+#    state: present
+#    config:
+#      gid: 972
+#      name: plex
+#      sudo: false
+#      smb: false
+#      sudo_nopasswd: false
+#      sudo_commands: [ ]
+#      allow_duplicate_gid: false
+
+### NOTE:
+###     - user will be created without its own group
+###     - use "truenas_groups" to create group for user
+truenas_users: []
+#  - name: plex
+#    state: present
+#    config:
+#      uid: 972
+#      group: 972
+#      username: plex
+#      home: /nonexistent
+#      home_mode: "755"
+#      shell: /usr/sbin/nologin
+#      full_name: for plex purpose
+#      email: plex@provider.com
+#      password_disabled: true
+#      locked: false
+#      microsoft_account: false
+#      smb: false
+#      sudo: false
+#      sudo_nopasswd: false
+#      sudo_commands: []
+#      sshpubkey: ""
+#      groups: []
+
+### NOTE:
+###     - "name" and config.var - must be the same
+###     - for values "YES" or "NO" - keep it in quotes - otherwise ansible will convert it into true/false
+###     - config.type can be - RC, LOADER, SYSCTL
+truenas_tunables: []
+#  - name: wireguard_enable
+#    state: present
+#    config:
+#      var: wireguard_enable
+#      value: "YES"
+#      type: RC
+#      comment: wireguard VPN
+#      enabled: true
+#  - name: wireguard_interfaces
+#    state: present
+#    config:
+#      var: wireguard_interfaces
+#      value: "wg0"
+#      type: RC
+#      comment: wireguard VPN
+#      enabled: true
+
+truenas_system_general: []
+##  ui_certificate: 0
+#  ui_httpsport: "443"
+#  ui_httpsredirect: false
+#  ui_httpsprotocols:
+#    - "TLSv1.2"
+#    - "TLSv1.3"
+#  ui_port: "80"
+#  ui_address:
+#    - "0.0.0.0"
+#  ui_v6address:
+#    - "::"
+#  kbdmap: ""
+#  language: "en"
+#  timezone: "Europe/Berlin"
+#  crash_reporting: true
+#  usage_collection: true
+
+truenas_system_ntp_server: []
+#  - name: "freebsd1"
+#    state: present
+#    config:
+#      address: "0.freebsd.pool.ntp.org"
+#      burst: false
+#      iburst: true
+#      prefer: false
+#      minpoll: "6"
+#      maxpoll: "10"
+#      force: true #force when enabled forces the addition of NTP server even if it is currently unreachable.
+
+### NOTE:
+###     - "name" should have the same values as dataset from dataset.yml, but without "{{ truenas_main_pool }}/"
+truenas_shares_smb: []
+#  - name: media
+#    state: present
+#    config:
+#      purpose: "DEFAULT_SHARE"
+#      path: "/mnt/{{ truenas_main_pool }}/media"
+#      home: false
+#      name: media
+#      comment: "media"
+#      ro: false
+#      browsable: true
+#      recyclebin: false
+#      guestok: false
+#      hostsallow: []
+#      hostsdeny: []
+#      auxsmbconf: ""
+#      aapl_name_mangling: false
+#      abe: false
+#      acl: true
+#      durablehandle: true
+#      streams: true
+#      timemachine: false
+#      shadowcopy: true
+#      fsrvp: false
+#      enabled: true
+#    acl:
+#      uid: 0
+#      gid: 0
+#      acltype: NFS4
+#      acl:
+#       - tag: GROUP
+#         id: 2200
+#         type: ALLOW
+#         perms:
+#           BASIC: FULL_CONTROL
+#         flags:
+#           BASIC: INHERIT
+#       - tag: USER
+#         id: 972
+#         type: ALLOW
+#         perms:
+#           BASIC: READ
+#         flags:
+#           BASIC: INHERIT
+
+truenas_services: []
+#  - name: afp
+#    state: absent
+#    service: afp
+#    config: []
+#
+#  - name: smb
+#    service: cifs
+#    state: present
+#    config:
+#      netbiosname: truenas
+#      netbiosname_b: truenas-b
+#      workgroup: WORKGROUP
+#      loglevel: MINIMUM
+#      syslog: false
+#      ntlmv1_auth: false
+#      enable_smb1: false
+#      admin_group: null
+#      guest: nobody
+#      aapl_extensions: true
+#
+#  - name: dynamicdns
+#    service: dynamicdns
+#    state: absent
+#    config: []
+#
+#  - name: ftp
+#    service: ftp
+#    state: absent
+#    config: []
+#
+#  - name: iscsitarget
+#    service: iscsitarget
+#    state: absent
+#    config: []
+#
+#  - name: nfs
+#    service: nfs
+#    state: absent
+#    config: []
+#
+#  - name: snmp
+#    service: snmp
+#    state: absent
+#    config: []
+#
+#  - name: ssh
+#    service: ssh
+#    state: present
+#    config:
+#      rootlogin: false
+#      passwordauth: false
+#      tcpport: 22
+#      sftp_log_level: ""
+#      sftp_log_facility: ""
+#
+#  - name: tftp
+#    service: tftp
+#    state: absent
+#    config: []
+#
+#  - name: ups
+#    service: ups
+#    state: absent
+#    config: []
+#
+#  - name: rsync
+#    service: rsync
+#    state: absent
+#    config: []
+#
+#  - name: smart
+#    service: smartd
+#    state: absent
+#    config: []
+#
+#  - name: lldp
+#    service: lldp
+#    state: absent
+#    config: []
+#
+#  - name: webdav
+#    service: webdav
+#    state: absent
+#    config: []
+#
+#  - name: s3
+#    service: s3
+#    state: absent
+#    config: []
+#
+#  - name: openvpn_client
+#    service: openvpn_client
+#    state: absent
+#    config: []
+#
+#  - name: openvpn_server
+#    service: openvpn_server
+#    state: absent
+#    config: []
+
+### NOTE:
+###    - "name" and "config.comment" - must be the same
+###    - config.when can be - PREINIT, POSTINIT, SHUTDOWN
+truenas_scripts:
+#  - name: wireguard
+#    state: present
+#    config:
+#      comment: wireguard
+#      type: "COMMAND"
+#      command: "mkdir -p /usr/local/etc/wireguard && cp /root/wg0.conf /usr/local/etc/wireguard/wg0.conf && /usr/local/etc/rc.d/wireguard start"
+#      script_text: ""
+#      script: ""
+#      when: PREINIT
+#      enabled: true
+#      timeout: 10
+
+truenas_pools: []
+#  - name: "{{ truenas_main_pool }}"
+#    state: present
+#    config:
+#      name: "{{ truenas_main_pool }}"
+#      deduplication: null
+#      checksum: null
+#      allow_duplicate_serials: true
+#      encryption: false
+#      encryption_options:
+#        generate_key: true
+#        pbkdf2iters: 0
+#        algorithm: AES-128-CCM
+#        passphrase: string
+#        key: string
+#      topology:
+#        data:
+#          - type: MIRROR
+#            disks:
+#              - ada1
+#              - ada2
+#        cache:
+#          - type: STRIPE
+#            disks:
+#              - da3
+#              - da4
+#        log:
+#          - type: STRIPE
+#            disks:
+#              - da5
+#        spares:
+#          - da6
+
+### NOTE:
+###   - to find out what "branch" and "plugin_repository" to use, go to /mnt/{{ truenas_main_pool }}/iocage/.plugins/
+###     there you will find folders, for example this one "github_com_freenas_iocage-ix-plugins_git"
+###     contained plugins belong to "iXsystems". So, to get "branch" do inside a folder "git branch", to get "plugin_repository"
+###     "git config --get remote.origin.url" to get a "plugin_repository"
+###   - "name" and "config.jail_name" must be the same
+truenas_plugins: []
+#  - name: plex
+#    state: present
+#    mount_points:
+#      - name: media
+#        config:
+#          action: ADD # ADD or REMOVE
+#          source: /mnt/pool/media
+#          destination: /media
+#          fstype: nullfs
+#          fsoptions: ro
+#    config:
+#        plugin_name: "plexmediaserver"
+#        jail_name: "plex"
+##        props: [ ]
+#        branch: "13.1-RELEASE"
+#        plugin_repository: "https://github.com/freenas/iocage-ix-plugins.git"
+
+### NOTE:
+###     - Option for "props" can be found in this way - run on truenas host `sudo iocage get all $nameJail`
+###     - API do not have Endpoint, which can return current mounts.
+###       This is mean, to update "mount_points" you need remove mount point
+###       and then add it back with new options
+###     - "mount_points.config.action" can be "ADD" or "REMOVE"
+###     - "config.props":
+###                     - should _always_ have "vnet=1"
+###                     - if "nat=1" then "bpf=0" and "dhcp=0"
+###                     - if "dcph=1" then "bpf=1" and "nat=0"
+truenas_jails:
+#  - name: test
+#    state: present
+#    mount_points:
+#      - name: test-media
+#        config:
+#          action: ADD
+#          source: /mnt/pool/media
+#          destination: /media
+#          fstype: nullfs
+#          fsoptions: rw
+#    command: []
+#    config:
+#      uuid: test
+#      basejail: true
+#      release: "13.1-RELEASE"
+#      pkglist: []
+#      props:
+#        - "vnet=1" # always "1"
+#        - "nat=0"
+#        - "bpf=1" # should be "1" with dhcp
+#        - "dhcp=1"
+#        - "nat_forwards=tcp(31001:31001),tcp(31080:31080)"
+#        - "vnet_default_interface=em0"
+#        - "securelevel=-1"
+#        - "allow_raw_sockets=1" # if you want ping within jail
+#        - "priority=98"
+#        - "boot=1"
+
+truenas_datasets: []
+#  - name: "{{ truenas_main_pool }}/media"
+#    state: present
+#    config:
+#      name: "{{ truenas_main_pool }}/media"
+#      type: FILESYSTEM
+#      comments: "media dataset - music, video"
+#      sync: "DISABLED"
+#      compression: "LZ4"
+#      atime: "OFF"
+#      exec: "ON"
+#      copies: 1
+#      snapdir: VISIBLE
+#      deduplication: "OFF"
+#      checksum: "ON"
+#      readonly: "OFF"
+#      recordsize: 1M
+#      casesensitivity: "INSENSITIVE"
+#      aclmode: "RESTRICTED"
+#      share_type: SMB
+#      xattr: "ON"
+#      encryption: false

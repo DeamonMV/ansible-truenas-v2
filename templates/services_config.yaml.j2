@@ -1,0 +1,87 @@
+{% set truenas_services_config = dict() %}
+{% set existing_services = dict() %}
+{% set configure_services = [] %}
+{% set start_services = [] %}
+{% set restart_services = [] %}
+{% set enable_services = [] %}
+{% set stop_services = [] %}
+{% set disable_services = [] %}
+
+{% for item in truenas_services_found.content | from_json %}
+{%   set _ = existing_services.update({
+              item.service: {
+                'id': item.id,
+                'enable': item.enable,
+                'state': item.state
+              }
+             })%}
+{% endfor %}
+
+{%  for item in truenas_services %}
+{%    if item.state == 'present' %}
+{%      set service_config = {
+          'name': item.name,
+          'config': item.config
+         }
+%}
+{%      set _ = configure_services.append(service_config) %}
+{%      set service_config = {
+         'id': existing_services[item.service].id,
+         'config':{ 'enable': true }
+          }
+%}
+{%      set _ = enable_services.append(service_config) %}
+{%    endif %}
+{% endfor%}
+
+{%  for service in truenas_services %}
+{%    if existing_services[service.service].state == 'STOPPED' and service.state == 'present' %}
+{%      set service_config = {
+          'service': service.service,
+          'service-control': {
+            'ha_propagate': true
+          }
+        }
+%}
+{%      set _ = start_services.append(service_config) %}
+
+{%   elif existing_services[service.service].state == 'RUNNING' and service.state == 'present' %}
+{%      set service_config = {
+          'service': service.service,
+          'service-control': {
+            'ha_propagate': true
+          }
+        }
+%}
+{%     set _ = restart_services.append(service_config) %}
+
+{%    elif service.state == 'absent' and existing_services[service.service].state == 'RUNNING' and existing_services[service.service].enable == true  %}
+{%      set service_config = {
+          'service': service.service,
+          'service-control': {
+            'ha_propagate': true
+          }
+        }
+%}
+{%     set _ = stop_services.append(service_config) %}
+{%      set service_config = {
+          'id': existing_services[service.service].id,
+          'config': { 'enable': false }
+          }
+%}
+{%     set _ = disable_services.append(service_config) %}
+
+
+{%   endif %}
+{% endfor %}
+{% set _ = truenas_services_config.update(
+  {
+  'configure_services': configure_services,
+  'start_services': start_services,
+  'restart_services': restart_services,
+  'enable_services': enable_services,
+  'stop_services': stop_services,
+  'disable_services': disable_services
+  })
+%}
+{{ truenas_services_config | to_json }}

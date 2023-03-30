@@ -1,0 +1,61 @@
+---
+- name: Groups
+  include_tasks: groups.yml
+  tags:
+    - truenas_groups
+
+- name: Services
+  include_tasks: services.yml
+  tags:
+    - truenas_services
+
+- name: Users
+  include_tasks: users.yml
+  tags:
+    - truenas_users
+
+- name: Disks
+  include_tasks: disks.yml
+  tags:
+    - truenas_disks
+    - truenas_unused_disks
+
+- name: Pools
+  include_tasks: pools.yml
+  tags:
+    - truenas_pools
+
+- name: Datasets
+  include_tasks: datasets.yml
+  tags:
+    - truenas_datasets
+
+- name: Systems
+  include_tasks: systems.yml
+  tags:
+    - truenas_systems
+
+- name: Shares
+  include_tasks: shares.yml
+  tags:
+    - truenas_shares
+
+- name: Jails
+  include_tasks: jails.yml
+  tags:
+    - truenas_jails
+
+- name: Tunables
+  include_tasks: tunables.yml
+  tags:
+    - truenas_tunables
+
+- name: Init Shutdown Scripts
+  include_tasks: scripts.yml
+  tags:
+    - truenas_scripts
+
+- name: Plugins
+  include_tasks: plugins.yml
+  tags:
+    - truenas_plugins

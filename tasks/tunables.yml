@@ -1,0 +1,84 @@
+---
+- name: tunables | Capturing Existing tunables
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/tunable' }}"
+  register: truenas_tunables_found
+  delegate_to: localhost
+  tags:
+    - truenas_tunables
+
+- name: tunables | Setting tunables Config Fact
+  set_fact:
+    truenas_tunables_config: "{{ lookup('template', 'tunables_config.yaml.j2') }}"
+  tags:
+    - truenas_tunables
+
+- name: tunables | debug | Create tunables
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_tunables_config | from_json | json_query('create_tunables') }}"
+  tags:
+    - never
+
+- name: tunables | debug | Update tunables
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_tunables_config | from_json | json_query('update_tunables') }}"
+  tags:
+    - never
+
+- name: tunables | debug | Delete tunables
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_tunables_config | from_json | json_query('delete_tunables') }}"
+  tags:
+    - never
+
+- name: tunables | Create tunables
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/tunable' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_tunables_config | from_json | json_query('create_tunables') }}"
+  tags:
+    - truenas_tunables
+
+- name: tunables | Update tunables
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/tunable/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_tunables_config | from_json | json_query('update_tunables') }}"
+  tags:
+    - truenas_tunables
+
+- name: tunables | Delete tunables
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/tunable/id/' + item.id|string }}"
+  delegate_to: localhost
+  loop: "{{ truenas_tunables_config | from_json | json_query('delete_tunables') }}"
+  tags:
+    - truenas_tunables

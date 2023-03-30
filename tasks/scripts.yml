@@ -1,0 +1,84 @@
+---
+- name: scripts | Capturing Existing scripts
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/initshutdownscript' }}"
+  register: truenas_scripts_found
+  delegate_to: localhost
+  tags:
+    - truenas_scripts
+
+- name: scripts | Setting scripts Config Fact
+  set_fact:
+    truenas_scripts_config: "{{ lookup('template', 'scripts_config.yaml.j2') }}"
+  tags:
+    - truenas_scripts
+
+- name: scripts | debug | Create scripts
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_scripts_config | from_json | json_query('create_scripts') }}"
+  tags:
+    - never
+
+- name: scripts | debug | Update scripts
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_scripts_config | from_json | json_query('update_scripts') }}"
+  tags:
+    - never
+
+- name: scripts | debug | Delete scripts
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_scripts_config | from_json | json_query('delete_scripts') }}"
+  tags:
+    - never
+
+- name: scripts | Create scripts
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/initshutdownscript' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_scripts_config | from_json | json_query('create_scripts') }}"
+  tags:
+    - truenas_scripts
+
+- name: scripts | Update scripts
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/initshutdownscript/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_scripts_config | from_json | json_query('update_scripts') }}"
+  tags:
+    - truenas_scripts
+
+- name: scripts | Delete scripts
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/initshutdownscript/id/' + item.id|string }}"
+  delegate_to: localhost
+  loop: "{{ truenas_scripts_config | from_json | json_query('delete_scripts') }}"
+  tags:
+    - truenas_scripts

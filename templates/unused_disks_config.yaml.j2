@@ -1,0 +1,22 @@
+{% set truenas_unused_disks_config = dict() %}
+{% set existing_disks = dict() %}
+{% set unused_disks = [] %}
+
+{% for item in truenas_unused_disks_found.content | from_json %}
+{%   set existing_disk = {
+  item.name: {
+    'size': item.size|filesizeformat(true),
+    'model': item.model,
+    'number': item.number,
+    'type': item.type
+}} %}
+{% set _ = unused_disks.append(existing_disk) %}
+{% endfor %}
+
+{% set _ = truenas_unused_disks_config.update(
+  {
+    'unused_disks': unused_disks
+  })
+%}
+
+{{ truenas_unused_disks_config | to_json }}

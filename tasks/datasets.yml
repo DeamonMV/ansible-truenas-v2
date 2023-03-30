@@ -1,0 +1,62 @@
+---
+- name: datasets | Capturing Existing Datasets
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/pool/dataset' }}"
+  register: truenas_datasets_found
+  delegate_to: localhost
+  tags:
+    - truenas_datasets
+
+- name: datasets | Setting groups Config Fact
+  set_fact:
+    truenas_datasets_config: "{{ lookup('template', 'datasets_config.yaml.j2') }}"
+  tags:
+    - truenas_datasets
+
+- name: datasets | debug | Create datasets
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_datasets_config | from_json | json_query('create_datasets') }}"
+  tags:
+    - never
+
+- name: datasets | debug | Update datasets
+  debug:
+    msg:
+      - "{{ item.config }}"
+  loop: "{{ truenas_datasets_config | from_json | json_query('update_datasets') }}"
+  tags:
+    - never
+
+- name: datasets | Create datasets
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/pool/dataset' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_datasets_config | from_json | json_query('create_datasets') }}"
+  tags:
+    - truenas_datasets
+
+- name: datasets | Update datasets
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/pool/dataset/id/' + item.id }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_datasets_config | from_json | json_query('update_datasets') }}"
+  tags:
+    - truenas_datasets

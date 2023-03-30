@@ -1,0 +1,80 @@
+---
+- name: pools | Capturing Existing Pools
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/pool' }}"
+  register: truenas_pools_found
+  delegate_to: localhost
+  tags:
+    - truenas_pools
+
+- name: pools | Setting Pools Config Fact
+  set_fact:
+    truenas_pools_config: "{{ lookup('template', 'pools_config.yaml.j2') }}"
+  tags:
+    - truenas_pools
+
+- name: users | debug | Create pools
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_pools_config | from_json | json_query('create_pools') }}"
+  tags:
+    - truenas_pools
+    - never
+
+- name: users | debug | Update pools
+  debug:
+    msg:
+      - "{{ item.config }}"
+  loop: "{{ truenas_pools_config | from_json | json_query('update_pools') }}"
+  tags:
+    - truenas_pools
+    - never
+
+- name: pools | Create pools
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/pool' }}"
+    body: "{{ item }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_pools_config | from_json | json_query('create_pools') }}"
+  tags:
+    - truenas_pools
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  tags:
+    - truenas_pools
+    - never
+
+- name: pools | Wait when creation of pool will be done
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(20) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_pools
+

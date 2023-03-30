@@ -1,0 +1,156 @@
+---
+- name: services | Capturing Existing Services
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/service' }}"
+  register: truenas_services_found
+  delegate_to: localhost
+  tags:
+    - truenas_services
+
+- name: services | Setting services Config Fact
+  set_fact:
+    truenas_services_config: "{{ lookup('template', 'services_config.yaml.j2') }}"
+  tags:
+    - truenas_services
+
+- name: services | debug | Configure services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('configure_services') }}"
+  tags:
+    - never
+
+- name: services | debug | Start services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('start_services') }}"
+  tags:
+    - never
+
+- name: services | debug | Restart services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('restart_services') }}"
+  tags:
+    - never
+
+- name: services | debug | Enable services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('enable_services') }}"
+  tags:
+    - never
+
+- name: services | debug | Stop services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('stop_services') }}"
+  tags:
+    - never
+
+- name: services | debug | Disable services
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_services_config | from_json | json_query('disable_services') }}"
+  tags:
+    - never
+
+- name: services | Configure services
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/' + item.name }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('configure_services') }}"
+  tags:
+    - truenas_services
+
+- name: services | Start services
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/service/start' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('start_services') }}"
+  tags:
+    - truenas_services
+
+- name: services | Restart services
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/service/restart' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('restart_services') }}"
+  tags:
+    - truenas_services
+
+- name: services | Enable services
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/service/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('enable_services') }}"
+  tags:
+    - truenas_services
+
+- name: services | Stop services
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/service/stop' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('stop_services') }}"
+  tags:
+    - truenas_services
+
+- name: services | Disable services
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/service/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_services_config | from_json | json_query('disable_services') }}"
+  tags:
+    - truenas_services

@@ -1,0 +1,32 @@
+{% set truenas_groups_config = dict() %}
+{% set existing_groups = dict() %}
+{% set create_groups = [] %}
+{% set update_groups = [] %}
+{% set delete_groups = [] %}
+
+{% for item in truenas_groups_found.content | from_json %}
+{%   set _ = existing_groups.update({item.group: {'id': item.id, 'gid': item.gid, 'group': item.group }}) %}
+{% endfor %}
+
+{% for group in truenas_groups %}
+{%   if group.name not in existing_groups and group.state == 'present' %}
+{%     set _ = create_groups.append(group.config) %}
+{%   elif group.name in existing_groups and group.state == 'present' %}
+{%     set group_config = {
+  'id': existing_groups[group.name].id,
+  'config': group.config
+  }
+%}
+{%     set _ = update_groups.append(group_config) %}
+{%   elif group.name in existing_groups and group.state == 'absent' %}
+{%     set _ = delete_groups.append({'id': existing_groups[group.name].id, 'name': existing_groups[group.name].group}) %}
+{%   endif %}
+{% endfor %}
+{% set _ = truenas_groups_config.update(
+  {
+  'create_groups': create_groups,
+  'update_groups': update_groups,
+  'delete_groups': delete_groups
+  })
+%}
+{{ truenas_groups_config | to_json }}

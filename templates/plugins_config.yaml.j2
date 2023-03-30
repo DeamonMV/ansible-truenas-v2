@@ -1,0 +1,97 @@
+{% set truenas_plugins_config = dict() %}
+{% set existing_plugins = dict() %}
+{% set create_plugins = [] %}
+{% set update_plugins = [] %}
+{% set stop_plugins = [] %}
+{% set start_plugins = [] %}
+{% set delete_plugins = [] %}
+{% set update_mount_points_plugins = [] %}
+
+{% for item in truenas_plugins_found.content | from_json %}
+{%   set _ = existing_plugins.update({
+       item.name: {
+         'id': item.id,
+         'plugin': item.plugin,
+         'name': item.name,
+         'state': item.state
+       }
+     }) 
+%}
+{% endfor %}
+
+{% for item in truenas_plugins %}
+{%   if item.name not in existing_plugins and item.state == 'present' %}
+{%     set _ = create_plugins.append(item.config) %}
+{%     if item.mount_points|length > 0 %}
+{%       for point in item.mount_points %}
+{%         set _ = update_mount_points_plugins.append({
+             'id': item.name,
+             'options': point.config
+           })
+%}
+{%        endfor %}
+{%      endif %}
+{%     set _ = stop_plugins.append({
+  'state': 'up',
+  'stop':
+    {
+      'jail': item.name,
+      'force': false
+  }
+  })
+%}
+{%     set _ = start_plugins.append({'jail': item.name, 'state': 'down'}) %}
+
+{%   elif item.name in existing_plugins and item.state == 'present' %}
+{%     set _ = update_plugins.append({
+  'id': item.name,
+  'config': {
+    'plugin': true
+  }
+  })
+%}
+{%     if item.mount_points|length > 0 %}
+{%       for point in item.mount_points %}
+{%         set _ = update_mount_points_plugins.append({
+             'jail': item.name,
+             'options': point.config
+           })
+%}
+{%        endfor %}
+{%      endif %}
+{%     set _ = stop_plugins.append({
+  'state': existing_plugins[item.name].state,
+  'stop':
+    {
+      'jail': item.name,
+      'force': false
+  }
+  })
+%}
+{%     set _ = start_plugins.append({'jail': item.name, 'state': existing_plugins[item.name].state}) %}
+{%   elif item.name in existing_plugins and item.state == 'absent' %}
+{%     set _ = delete_plugins.append({'id': item.name, 'name': item.name}) %}
+{%     set _ = stop_plugins.append({
+  'state': existing_plugins[item.name].state,
+  'stop':
+    {
+      'jail': item.name,
+      'force': false
+  }
+  })
+%}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_plugins_config.update(
+  {
+  'existing_plugins': existing_plugins,
+  'create_plugins': create_plugins,
+  'update_plugins': update_plugins,
+  'update_mount_points_plugins': update_mount_points_plugins,
+  'stop_plugins': stop_plugins,
+  'start_plugins': start_plugins,
+  'delete_plugins': delete_plugins
+  })
+%}
+{{ truenas_plugins_config | to_json }}

@@ -1,0 +1,97 @@
+---
+- name: users | Capturing Existing Users
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/user' }}"
+  register: truenas_users_found
+  delegate_to: localhost
+  tags:
+    - truenas_users
+
+- name: users | Call Groups
+  include_tasks: groups.yml
+  tags:
+    - truenas_users
+
+- name: users | Setting users Config Fact
+  set_fact:
+    truenas_users_config: "{{ lookup('template', 'users_config.yaml.j2') }}"
+  tags:
+    - truenas_users
+
+- name: users | debug | Create users
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_users_config | from_json | json_query('create_users') }}"
+  tags:
+    - never
+
+- name: users | debug | Update users
+  debug:
+    msg:
+      - "{{ item.config }}"
+  loop: "{{ truenas_users_config | from_json | json_query('update_users') }}"
+  tags:
+    - never
+
+- name: users | debug | Delete users
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_users_config | from_json | json_query('delete_users') }}"
+  tags:
+    - never
+
+- name: users | Create users
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/user' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_users_config | from_json | json_query('create_users') }}"
+  tags:
+    - truenas_users
+
+- name: users | Update users
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/user/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_users_config | from_json | json_query('update_users') }}"
+  tags:
+    - truenas_users
+
+- name: users | Delete users
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/user/id/' + item.id|string }}"
+    body: "{{ payload }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_users_config | from_json | json_query('delete_users') }}"
+  vars:
+    payload: |
+      {
+        "delete_group": false
+      }
+  tags:
+    - truenas_users

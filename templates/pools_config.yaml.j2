@@ -1,0 +1,28 @@
+{% set truenas_pools_config = dict() %}
+{% set existing_pools = dict() %}
+{% set create_pools = [] %}
+{% set update_pools = [] %}
+
+{% for item in truenas_pools_found.content | from_json %}
+{%   set _ = existing_pools.update({item.name: {'id': item.id, 'path': item.path}}) %}
+{% endfor %}
+
+{% for pool in truenas_pools %}
+{%   if pool.name not in existing_pools and pool.state == 'present' %}
+{%     set _ = create_pools.append(pool.config) %}
+{%   elif pool.name in existing_pools and pool.state == 'present' %}
+{%     set pool_config = {
+  'id': existing_pools[pool.name].id,
+  'config': pool.config
+  }
+%}
+{%     set _ = update_pools.append(pool_config) %}
+{%   endif %}
+{% endfor %}
+{% set _ = truenas_pools_config.update(
+  {
+  'create_pools': create_pools,
+  'update_pools': update_pools,
+  })
+%}
+{{ truenas_pools_config | to_json }}

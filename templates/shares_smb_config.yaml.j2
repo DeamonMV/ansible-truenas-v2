@@ -1,0 +1,110 @@
+{% set truenas_shares_smb_config = dict() %}
+{% set existing_shares_smb = dict() %}
+{% set create_shares_smb = [] %}
+{% set update_shares_smb = [] %}
+{% set update_shares_smb_acl = [] %}
+{% set delete_shares_smb = [] %}
+
+{% for item in truenas_shares_smb_found.content | from_json %}
+{%     set _ = existing_shares_smb.update(
+        {
+          item.name: {
+            'id': item.id,
+            'path': item.path,
+            'name': item.name
+          }
+        })
+%}
+{% endfor %}
+
+{% for share in truenas_shares_smb %}
+{%   if share.name not in existing_shares_smb and share.state == 'present' %}
+{%     set _ = create_shares_smb.append(share.config) %}
+{%     set _ = update_shares_smb_acl.append({
+              'name': share.name,
+              'config': {
+                'path': share.config.path,
+                'uid': share.acl.uid,
+                'gid': share.acl.gid,
+                'dacl': share.acl.acl,
+                'nfs41_flags': {
+                  'autoinherit': true,
+                  'protected': true
+                },
+                'acltype': share.acl.acltype,
+                'options': {
+                  'stripacl': false,
+                  'recursive': true,
+                  'traverse': false,
+                  'canonicalize': true
+                }
+              }
+            })
+%}
+{%   elif share.name in existing_shares_smb and share.state == 'present' %}
+{%     set _ = update_shares_smb.append({'id': existing_shares_smb[share.name].id, 'config': share.config}) %}
+{%     set _ = update_shares_smb_acl.append({
+              'name': share.name,
+              'config': {
+                'path': share.config.path,
+                'uid': share.acl.uid,
+                'gid': share.acl.gid,
+                'dacl': share.acl.acl,
+                'nfs41_flags': {
+                  'autoinherit': true,
+                  'protected': true
+                },
+                'acltype': share.acl.acltype,
+                'options': {
+                  'stripacl': false,
+                  'recursive': true,
+                  'traverse': false,
+                  'canonicalize': true
+                }
+              }
+            })
+%}
+{%   elif share.name in existing_shares_smb and share.state == 'absent' %}
+{%     set _ = delete_shares_smb.append({'id': existing_shares_smb[share.name].id}) %}
+{%     set _ = update_shares_smb_acl.append({
+              'name': share.name,
+              'config': {
+                'path': share.config.path,
+                'uid': share.acl.uid,
+                'gid': share.acl.gid,
+                'dacl': [{
+                  'tag': 'USER',
+                  'id': share.acl.uid,
+                  'type': 'ALLOW',
+                  'perms': {
+                    'BASIC': 'FULL_CONTROL'
+                  },
+                  'flags': {
+                    'BASIC': 'INHERIT'
+                  }
+                    }],
+                'nfs41_flags': {
+                  'autoinherit': true,
+                  'protected': true
+                },
+                'acltype': share.acl.acltype,
+                'options': {
+                  'stripacl': false,
+                  'recursive': true,
+                  'traverse': false,
+                  'canonicalize': true
+                }
+              }
+            })
+%}
+{%   endif %}
+{% endfor %}
+{% set _ = truenas_shares_smb_config.update(
+  {
+  'create_shares_smb': create_shares_smb,
+  'update_shares_smb': update_shares_smb,
+  'update_shares_smb_acl': update_shares_smb_acl,
+  'delete_shares_smb': delete_shares_smb
+  })
+%}
+{{ truenas_shares_smb_config | to_json }}

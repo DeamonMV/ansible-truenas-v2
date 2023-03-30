@@ -1,0 +1,46 @@
+---
+- name: disks | Capturing Existing Disks
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/disk' }}"
+  register: truenas_disks_found
+  delegate_to: localhost
+  tags:
+    - truenas_disks
+
+- name: disks | Capturing Existing Unused Disks
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/disk/get_unused' }}"
+  register: truenas_unused_disks_found
+  delegate_to: localhost
+  tags:
+    - truenas_disks
+    - truenas_unused_disks
+
+- name: datasets | Setting Disks Config Fact
+  set_fact:
+    truenas_disks_config: "{{ lookup('template', 'disks_config.yaml.j2') }}"
+  tags:
+    - truenas_disks
+
+- name: datasets | Setting Unused Disks Config Fact
+  set_fact:
+    truenas_unused_disks_config: "{{ lookup('template', 'unused_disks_config.yaml.j2') }}"
+  tags:
+    - truenas_disks
+    - truenas_unused_disks
+
+- name: datasets | Unused Disks
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_unused_disks_config | from_json | json_query('unused_disks') }}"
+  tags:
+    - truenas_unused_disks

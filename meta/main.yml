@@ -1,0 +1,11 @@
+galaxy_info:
+  author: Dmitriy Matveev
+  description: An Ansible role to manage TrueNAS CORE via API v2
+
+  license: MIT
+
+  min_ansible_version: 2.13
+
+  galaxy_tags: []
+
+dependencies: []

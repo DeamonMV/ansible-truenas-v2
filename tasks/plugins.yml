@@ -1,0 +1,266 @@
+---
+- name: plugins | Capturing Existing plugins
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/plugin' }}"
+  register: truenas_plugins_found
+  delegate_to: localhost
+  tags:
+    - truenas_plugins
+
+- name: plugins | Setting plugins Config Fact
+  set_fact:
+    truenas_plugins_config: "{{ lookup('template', 'plugins_config.yaml.j2') }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | debug | Create plugins
+  debug:
+    msg:
+      - "{{ truenas_plugins_config | from_json | json_query('existing_plugins') }}"
+  tags:
+    - never
+
+- name: plugins | debug | Create plugins
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_plugins_config | from_json | json_query('create_plugins') }}"
+  tags:
+    - never
+
+- name: plugins | debug | Update plugins
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_plugins_config | from_json | json_query('update_plugins') }}"
+  tags:
+    - never
+
+- name: plugins | debug | Delete plugins
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_plugins_config | from_json | json_query('delete_plugins') }}"
+  tags:
+    - never
+
+- name: plugins | Create plugins
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/plugin' }}"
+    body: "{{ item }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('create_plugins') }}"
+  tags:
+    - truenas_plugins
+
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  tags:
+    - truenas_plugins
+    - never
+
+- name: plugins | Wait when creation of plugins will be done
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(60) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Update plugins
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/plugin/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('update_plugins') }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Stop plugins
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/stop' }}"
+    body: "{{ item.stop }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('stop_plugins') }}"
+  when: item.state == 'up'
+  tags:
+    - truenas_plugins
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  tags:
+    - truenas_plugins
+    - never
+
+- name: plugins | Wait when jail will be stopped
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(60) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Capturing Existing plugins
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/plugin' }}"
+  register: truenas_plugins_found
+  delegate_to: localhost
+  tags:
+    - truenas_plugins
+
+- name: plugins | Setting plugins Config Fact
+  set_fact:
+    truenas_plugins_config: "{{ lookup('template', 'plugins_config.yaml.j2') }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Delete plugins
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/plugin/id/' + item.id|string }}"
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('delete_plugins') }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Update plugins fstab
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/fstab' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('update_mount_points_plugins') }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Start plugins
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/start' }}"
+    body: "\"{{ item.jail }}\""
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_plugins_config | from_json | json_query('start_plugins') }}"
+  when: item.state == 'down'
+  tags:
+    - truenas_plugins
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  tags:
+    - truenas_plugins
+    - never
+
+- name: plugins | Wait when jail will be started
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(20) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_plugins
+
+- name: plugins | Get plugins info
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/plugin' }}"
+  register: plugins_info
+  delegate_to: localhost
+  tags:
+    - truenas_plugins
+
+- name: Show plugins info
+  debug:
+    msg:
+      - "PLUGIN NAME: {{ item.name }}"
+      - "Plugin Info"
+      - "{{ item.plugin_info }}"
+      - "Admin Portal"
+      - "{{ item.admin_portals }}"
+  loop: "{{ plugins_info.json }}"
+  tags:
+    - truenas_plugins

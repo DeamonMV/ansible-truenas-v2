@@ -1,0 +1,53 @@
+{% set truenas_datasets_config = dict() %}
+{% set existing_datasets = dict() %}
+{% set create_datasets = [] %}
+{% set update_datasets = [] %}
+
+{% for item in truenas_datasets_found.content | from_json %}
+{%   if item.id != truenas_main_pool %}
+{%     set _ = existing_datasets.update(
+        {
+          item.name: {
+            'id': item.id,
+            'name': item.name
+          }
+        })
+%}
+{%   endif %}
+{% endfor %}
+
+{% for dataset in truenas_datasets %}
+{%   if dataset.name not in existing_datasets and dataset.state == 'present' %}
+{%     set _ = create_datasets.append(dataset.config) %}
+{%   elif dataset.name in existing_datasets and dataset.state == 'present' %}
+  {# TODO: think about to use method pop to delete unwanted firlds #}
+  {# https://selivan.github.io/2019/10/07/jinja2-delete-item-from-dictionary.html #}
+{%     set dataset_config = {
+        'id': existing_datasets[dataset.name].id | replace("/","%2F"),
+        'config': {
+          'comments': dataset.config.comments,
+          'sync': dataset.config.sync,
+          'compression': dataset.config.compression,
+          'atime': dataset.config.atime,
+          'exec': dataset.config.exec,
+          'copies': dataset.config.copies,
+          'snapdir': dataset.config.snapdir,
+          'deduplication': dataset.config.deduplication,
+          'checksum': dataset.config.checksum,
+          'readonly': dataset.config.readonly,
+          'recordsize': dataset.config.recordsize,
+          'aclmode': dataset.config.aclmode,
+          'xattr': dataset.config.xattr
+        }
+      }
+%}
+{%     set _ = update_datasets.append(dataset_config) %}
+{%   endif %}
+{% endfor %}
+{% set _ = truenas_datasets_config.update(
+  {
+  'create_datasets': create_datasets,
+  'update_datasets': update_datasets,
+  })
+%}
+{{ truenas_datasets_config | to_json }}

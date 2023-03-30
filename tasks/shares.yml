@@ -1,0 +1,110 @@
+---
+- name: shares | Capturing Existing Shares SMB
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/sharing/smb' }}"
+  register: truenas_shares_smb_found
+  delegate_to: localhost
+  tags:
+    - truenas_shares
+
+- name: shares | Setting Shares SMB Config Fact
+  set_fact:
+    truenas_shares_smb_config: "{{ lookup('template', 'shares_smb_config.yaml.j2') }}"
+  tags:
+    - truenas_shares
+
+- name: shares | debug | Create shares SMB
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('create_shares_smb') }}"
+  tags:
+    - never
+
+- name: shares | debug | Update shares SMB ACL
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('update_shares_smb_acl') }}"
+  tags:
+    - never
+
+- name: shares | debug | Update shares SMB
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('update_shares_smb') }}"
+  tags:
+    - never
+
+- name: shares | debug | Delete shares SMB
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('delete_shares_smb') }}"
+  tags:
+    - never
+
+# TODO: all above tasks in return can contain ID of the job which do actual work inside TRUENAS
+#       Think about to check if job is done to be sure that request was successful
+- name: shares | Create Shares SMB
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/sharing/smb' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('create_shares_smb') }}"
+  tags:
+    - truenas_shares
+
+- name: shares | Update Shares SMB
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/sharing/smb/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('update_shares_smb') }}"
+  tags:
+    - truenas_shares
+
+- name: shares | Update Shares SMB ACL
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/filesystem/setacl' }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('update_shares_smb_acl') }}"
+  tags:
+    - truenas_shares
+
+- name: shares | Delete Shares SMB
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/sharing/smb/id/' + item.id|string }}"
+  delegate_to: localhost
+  loop: "{{ truenas_shares_smb_config | from_json | json_query('delete_shares_smb') }}"
+  tags:
+    - truenas_shares

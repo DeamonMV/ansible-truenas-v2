@@ -1,0 +1,47 @@
+{% set truenas_users_config = dict() %}
+{% set existing_users = dict() %}
+{% set existing_groups = dict() %}
+{% set create_users = [] %}
+{% set update_users = [] %}
+{% set delete_users = [] %}
+
+{% for item in truenas_groups_found.content | from_json %}
+{%   set _ = existing_groups.update({item.gid: {'id': item.id, 'gid': item.gid, 'group': item.group }}) %}
+{% endfor %}
+
+{% for user in truenas_users_found.content | from_json %}
+{%   set _ = existing_users.update({user.username: {'id': user.id, 'uid': user.uid, 'name': user.username }}) %}
+{% endfor %}
+
+{% for user in truenas_users %}
+{# NOTE: user.config.group must be updated with API ID group, not actual group ID from the system #}
+{%   set groups_api_id = [] %}
+{%   for gp in user.config.groups %}
+{%     set _ = groups_api_id.append(existing_groups[gp].id) %}
+{%   endfor %}
+{%   if user.name not in existing_users and user.state == 'present' %}
+{%     set _ = user.config.update({'group': existing_groups[user.config.group].id }) %}
+{%     set _ = user.config.update({'groups': groups_api_id }) %}
+{%     set _ = create_users.append(user.config) %}
+{%   elif user.name in existing_users and user.state == 'present' %}
+{%     set user_config = {
+  'id': existing_users[user.name].id,
+  'config': user.config
+  }
+%}
+{%     set _ = user.config.update({'group': existing_groups[user.config.group].id }) %}
+{%     set _ = user.config.update({'groups': groups_api_id }) %}
+{%     set _ = update_users.append(user_config) %}
+{%   elif user.name in existing_users and user.state == 'absent' %}
+{%     set _ = delete_users.append({'id': existing_users[user.name].id, 'name': existing_users[user.name].name}) %}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_users_config.update(
+  {
+  'create_users': create_users,
+  'update_users': update_users,
+  'delete_users': delete_users
+  })
+%}
+{{ truenas_users_config | to_json }}

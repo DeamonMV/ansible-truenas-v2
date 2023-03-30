@@ -1,0 +1,306 @@
+# UPDATE tasks not finished, I don't know how to do update through API
+---
+- name: jails | Capturing Existing jails
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/jail' }}"
+  register: truenas_jails_found
+  delegate_to: localhost
+  tags:
+    - truenas_jails
+
+- name: jails | Setting jails Config Fact
+  set_fact:
+    truenas_jails_config: "{{ lookup('template', 'jails_config.yaml.j2') }}"
+  tags:
+    - truenas_jails
+
+- name: users | debug | Create jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('create_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Update jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('update_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Delete jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('delete_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Update jails mount points
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('update_mount_points_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Stop jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('stop_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Start jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('start_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: users | debug | Command jails
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_jails_config | from_json | json_query('command_jails') }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: jails | Create jails
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail' }}"
+    body: "{{ item }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('create_jails') }}"
+  tags:
+    - truenas_jails
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  tags:
+    - truenas_jails
+    - never
+
+- name: jails | Wait when creation of jail will be done
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(20) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Stop jails
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/stop' }}"
+    body: "{{ item.stop }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('stop_jails') }}"
+  when: item.state == 'up'
+  tags:
+    - truenas_jails
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  tags:
+    - truenas_jails
+    - never
+
+- name: jails | Wait when jail will be stopped
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(20) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Update jails fstab
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/fstab' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('update_mount_points_jails') }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Capturing Existing jails
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/jail' }}"
+  register: truenas_jails_found
+  delegate_to: localhost
+  tags:
+    - truenas_jails
+
+- name: jails | Setting jails Config Fact
+  set_fact:
+    truenas_jails_config: "{{ lookup('template', 'jails_config.yaml.j2') }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Start jails
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/start' }}"
+    body: "\"{{ item.jail }}\""
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('start_jails') }}"
+  when: item.state == 'down'
+  tags:
+    - truenas_jails
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  tags:
+    - truenas_jails
+    - never
+
+- name: jails | Wait when jail will be started
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(20) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Run command in jails
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/exec' }}"
+    body: "{{ item.exec }}"
+    body_format: json
+  register: job_id
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('command_jails') }}"
+  tags:
+    - truenas_jails
+
+- name: users | debug | Job IDs
+  debug:
+    msg:
+      - "{{ item.content }}"
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  tags:
+    - truenas_jails
+    - never
+
+- name: jails | Wait when all exec within jails will be done
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/core/get_jobs/?id=' + item.content }}"
+  register: result
+  delegate_to: localhost
+  loop: "{{ job_id.results }}"
+  when: item.content is defined
+  until:
+    - result.content | from_json | json_query('[].state') | first == 'SUCCESS'
+  retries: "{{ truenas_retries | default(40) }}"
+  delay: "{{ truenas_delay | default(5) }}"
+  tags:
+    - truenas_jails
+
+- name: jails | Delete jails
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/jail/id/' + item.id }}"
+  delegate_to: localhost
+  loop: "{{ truenas_jails_config | from_json | json_query('delete_jails') }}"
+  tags:
+    - truenas_jails

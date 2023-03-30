@@ -1,0 +1,38 @@
+{% set truenas_systems_ntp_config = dict() %}
+{% set existing_ntp_servers = dict() %}
+{% set create_ntp_servers = [] %}
+{% set update_ntp_servers = [] %}
+{% set delete_ntp_servers = [] %}
+
+{% for item in truenas_systems_ntp_found.content | from_json %}
+{%   set _ = existing_ntp_servers.update({
+       item.address: {
+         'id': item.id
+       }
+     }) 
+%}
+{% endfor %}
+
+{% for server in truenas_system_ntp_server %}
+{%   if server.config.address not in existing_ntp_servers and server.state == 'present' %}
+{%     set _ = create_ntp_servers.append(server.config) %}
+{%   elif server.config.address in existing_ntp_servers and server.state == 'present' %}
+{%     set server_config = {
+  'id': existing_ntp_servers[server.config.address].id,
+  'config': server.config
+  }
+%}
+{%     set _ = update_ntp_servers.append(server_config) %}
+{%   elif server.config.address in existing_ntp_servers and server.state == 'absent' %}
+{%     set _ = delete_ntp_servers.append({'id': existing_ntp_servers[server.config.address].id, 'name': server.name}) %}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_systems_ntp_config.update(
+  {
+  'create_ntp_servers': create_ntp_servers,
+  'update_ntp_servers': update_ntp_servers,
+  'delete_ntp_servers': delete_ntp_servers
+  })
+%}
+{{ truenas_systems_ntp_config | to_json }}

@@ -1,0 +1,94 @@
+---
+- name: groups | Capturing Existing Groups
+  uri:
+    method: GET
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    url: "{{ truenas_url + '/api/v2.0/group' }}"
+  register: truenas_groups_found
+  delegate_to: localhost
+  tags:
+    - truenas_groups
+    - truenas_users
+
+- name: groups | Setting groups Config Fact
+  set_fact:
+    truenas_groups_config: "{{ lookup('template', 'groups_config.yaml.j2') }}"
+  tags:
+    - truenas_groups
+    - truenas_users
+
+- name: groups | debug | Create groups
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_groups_config | from_json | json_query('create_groups') }}"
+  tags:
+    - never
+
+- name: groups | debug | Update groups
+  debug:
+    msg:
+      - "{{ item.config }}"
+  loop: "{{ truenas_groups_config | from_json | json_query('update_groups') }}"
+  tags:
+    - never
+
+- name: groups | debug | Delete groups
+  debug:
+    msg:
+      - "{{ item }}"
+  loop: "{{ truenas_groups_config | from_json | json_query('delete_groups') }}"
+  tags:
+    - never
+
+- name: groups | Create groups
+  uri:
+    method: POST
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/group' }}"
+    body: "{{ item }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_groups_config | from_json | json_query('create_groups') }}"
+  tags:
+    - truenas_groups
+
+- name: groups | Update groups
+  uri:
+    method: PUT
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/group/id/' + item.id|string }}"
+    body: "{{ item.config }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_groups_config | from_json | json_query('update_groups') }}"
+  tags:
+    - truenas_groups
+
+- name: groups | Delete groups
+  uri:
+    method: DELETE
+    headers:
+      Authorization: "Bearer {{ truenas_api_key }}"
+    return_content: true
+    status_code: 200
+    url: "{{ truenas_url + '/api/v2.0/group/id/' + item.id|string }}"
+    body: "{{ payload }}"
+    body_format: json
+  delegate_to: localhost
+  loop: "{{ truenas_groups_config | from_json | json_query('delete_groups') }}"
+  vars:
+    payload: |
+      {
+        "delete_users": false
+      }
+  tags:
+    - truenas_groups

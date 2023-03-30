@@ -1,0 +1,37 @@
+{% set truenas_tunables_config = dict() %}
+{% set existing_tunables = dict() %}
+{% set create_tunables = [] %}
+{% set update_tunables = [] %}
+{% set delete_tunables = [] %}
+
+{% for item in truenas_tunables_found.content | from_json %}
+{%   set _ = existing_tunables.update({
+       item.var: {
+         'id': item.id
+       }
+     }) 
+%}
+{% endfor %}
+
+{% for item in truenas_tunables %}
+{%   if item.name not in existing_tunables and item.state == 'present' %}
+{%     set _ = create_tunables.append(item.config) %}
+{%   elif item.name in existing_tunables and item.state == 'present' %}
+{%     set _ = update_tunables.append({
+  'id': existing_tunables[item.name].id,
+  'config': item.config
+  })
+%}
+{%   elif item.name in existing_tunables and item.state == 'absent' %}
+{%     set _ = delete_tunables.append({'id': existing_tunables[item.name].id, 'name': item.name}) %}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_tunables_config.update(
+  {
+  'create_tunables': create_tunables,
+  'update_tunables': update_tunables,
+  'delete_tunables': delete_tunables
+  })
+%}
+{{ truenas_tunables_config | to_json }}

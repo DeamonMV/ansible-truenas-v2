@@ -1,0 +1,37 @@
+{% set truenas_scripts_config = dict() %}
+{% set existing_scripts = dict() %}
+{% set create_scripts = [] %}
+{% set update_scripts = [] %}
+{% set delete_scripts = [] %}
+
+{% for item in truenas_scripts_found.content | from_json %}
+{%   set _ = existing_scripts.update({
+       item.comment: {
+         'id': item.id
+       }
+     }) 
+%}
+{% endfor %}
+
+{% for item in truenas_scripts %}
+{%   if item.name not in existing_scripts and item.state == 'present' %}
+{%     set _ = create_scripts.append(item.config) %}
+{%   elif item.name in existing_scripts and item.state == 'present' %}
+{%     set _ = update_scripts.append({
+  'id': existing_scripts[item.name].id,
+  'config': item.config
+  })
+%}
+{%   elif item.name in existing_scripts and item.state == 'absent' %}
+{%     set _ = delete_scripts.append({'id': existing_scripts[item.name].id, 'name': item.name}) %}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_scripts_config.update(
+  {
+  'create_scripts': create_scripts,
+  'update_scripts': update_scripts,
+  'delete_scripts': delete_scripts
+  })
+%}
+{{ truenas_scripts_config | to_json }}

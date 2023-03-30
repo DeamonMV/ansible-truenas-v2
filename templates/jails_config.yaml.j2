@@ -1,0 +1,159 @@
+{% set truenas_jails_config = dict() %}
+{% set existing_jails = dict() %}
+{% set create_jails = [] %}
+{% set delete_jails = [] %}
+{% set update_jails = [] %}
+{% set start_jails = [] %}
+{% set stop_jails = [] %}
+{% set command_jails = [] %}
+{% set update_mount_points_jails = [] %}
+
+{% for item in truenas_jails_found.content | from_json %}
+{%   set _ = existing_jails.update({item.id: {'release': item.release, 'state': item.state}}) %}
+{% endfor %}
+
+{% for jail in truenas_jails %}
+{%   if 'boot=1' in jail.config.props %}
+{%     set state_jail = 'up' %}
+{%   elif 'boot=0' in jail.config.props %}
+{%     set state_jail = 'down' %}
+{%   endif %}
+{%   if jail.name not in existing_jails and jail.mount_points|length == 0 and jail.state == 'present' %}
+{%     set _ = create_jails.append(jail.config) %}
+{%     set _ = start_jails.append(
+              {
+                'jail': jail.name,
+                'state': state_jail
+              })
+%}
+}}
+{%     for item in jail.command %}
+{%       set _ = command_jails.append(
+                {
+                  'index': loop.index,
+                  'exec': {
+                    'jail': jail.name,
+                    'command': [
+                      item
+                    ],
+                    'options': {
+                        'host_user': 'root',
+                        'jail_user': 'root'
+                    }
+                  }
+                })
+%}
+{%     endfor%}
+{%     set _ = stop_jails.append({
+  'state': state_jail,
+  'stop':
+    {
+      'jail': jail.name,
+      'force': false
+  }
+  })
+%}
+{%   elif jail.name not in existing_jails and jail.mount_points|length > 0 and jail.state == 'present' %}
+{%     set _ = create_jails.append(jail.config) %}
+{%     set _ = start_jails.append(
+              {
+                'jail': jail.name,
+                'state': state_jail,
+              })
+%}
+{%     for item in jail.command %}
+{%       set _ = command_jails.append(
+                {
+                  'index': loop.index,
+                  'exec': {
+                    'jail': jail.name,
+                    'command': [
+                      item
+                    ],
+                    'options': {
+                        'host_user': 'root',
+                        'jail_user': 'root'
+                    }
+                  }
+                })
+%}
+{%     endfor%}
+{%     set _ = stop_jails.append({
+  'state': state_jail,
+  'stop':
+    {
+      'jail': jail.name,
+      'force': false
+  }
+  })
+%}
+{%     for point in jail.mount_points %}
+{%       set _ = update_mount_points_jails.append({
+    'jail': jail.name,
+    'options': point.config
+    })
+%}
+{%   endfor%}
+
+{%   elif jail.name in existing_jails and jail.mount_points|length > 0 and jail.state == 'present' %}
+{%     set _ = update_jails.append({
+  'id': jail.name,
+  'config': jail.config
+  })
+%}
+{%     set _ = stop_jails.append({
+  'state': existing_jails[jail.name].state,
+  'stop':
+    {
+      'jail': jail.name,
+      'force': false
+  }
+  })
+%}
+{%     set _ = start_jails.append(
+              {
+                'jail': jail.name,
+                'state': existing_jails[jail.name].state
+              })
+%}
+{%   for point in jail.mount_points %}
+{%     set _ = update_mount_points_jails.append({
+  'jail': jail.name,
+  'options': point.config
+  })
+%}
+{%   endfor%}
+
+{%   elif jail.name in existing_jails and jail.mount_points|length == 0 and jail.state == 'present' %}
+{%     set _ = update_jails.append({
+  'id': jail.name,
+  'config': jail.config
+  })
+%}
+
+{%   elif jail.name in existing_jails and jail.state == 'absent' %}
+{%     set _ = delete_jails.append({'id': jail.name}) %}
+{%     set _ = stop_jails.append({
+  'state': existing_jails[jail.name].state,
+  'stop':
+    {
+      'jail': jail.name,
+      'force': false
+  }
+  })
+%}
+{%   endif %}
+{% endfor %}
+
+{% set _ = truenas_jails_config.update(
+  {
+  'create_jails': create_jails,
+  'update_jails': update_jails,
+  'delete_jails': delete_jails,
+  'update_mount_points_jails': update_mount_points_jails,
+  'start_jails': start_jails,
+  'stop_jails': stop_jails,
+  'command_jails': command_jails
+  })
+%}
+{{ truenas_jails_config | to_json }}
